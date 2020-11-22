@@ -118,9 +118,13 @@ let makeButton=({label="",callback=null})=>{
 		}
 		return {who:null,boxes:[]};
 	},
-	makeTicTacToeBoard=({container,width=3,height=3,length=Math.min(width,height)})=>{
-		console.log(length)
-		let won=false,
+	makeTicTacToeBoard=({
+		container,
+		width=3,
+		height=3,
+		length=Math.min(width,height)
+	})=>{
+		let gameOver=false,
 			player="X",
 			boardData=makeIterable(height).map(()=>
 				makeIterable(width).map(()=>null)),
@@ -129,19 +133,21 @@ let makeButton=({label="",callback=null})=>{
 			table=realBox.appendChild(makeButtonTable({
 				labels:boardData.map(v=>v.map(()=>"?")),
 				callback:({x,y,e})=>{
-					if(won)return
+					if(gameOver)return
 					boardData[y][x]=player
 					e.target.innerText=player
 					e.target.disabled=true
 					movesLeft--
 					if(movesLeft===0){
-						won=true
+						gameOver=true
 						playerIndicator.innerText=`Draw! (no moves left)`
+						//Update for recursive games
+						player=null
 						return
 					}
 					let win=checkForWin({board:boardData,maxDepth:length})
 					if(win.who!==null){
-						won=true
+						gameOver=true
 						player=win.who
 						playerIndicator.innerText=`${player} won!`
 						table.childNodes.forEach((tr,ny)=>
@@ -159,6 +165,6 @@ let makeButton=({label="",callback=null})=>{
 				}
 			})),
 			playerIndicator=realBox.appendChild(makeSpan({
-				text:"Ready? Start!"
+				text:`${player} goes first.`
 			}))
 	}
