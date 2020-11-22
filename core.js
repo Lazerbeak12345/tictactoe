@@ -122,10 +122,12 @@ let makeButton=({label="",callback=null})=>{
 		container,
 		width=3,
 		height=3,
-		length=Math.min(width,height)
+		length=Math.min(width,height),
+		players="XO"
 	})=>{
 		let gameOver=false,
-			player="X",
+			player=players[0],
+			playerIndex=0,
 			boardData=makeIterable(height).map(()=>
 				makeIterable(width).map(()=>null)),
 			movesLeft=height*width,
@@ -159,7 +161,10 @@ let makeButton=({label="",callback=null})=>{
 								})
 							}))
 					}else{
-						player=player==="X"?"O":"X"
+						playerIndex++
+						if(playerIndex>=players.length)
+							playerIndex=0
+						player=players[playerIndex]
 						playerIndicator.innerText=`${player} (moves left: ${movesLeft})`
 					}
 				}

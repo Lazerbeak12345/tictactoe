@@ -9,6 +9,7 @@
 			<input type=text id=width>
 			<input type=text id=height>
 			<input type=text id=length>
+			<input type=text id=players>
 			<button id=mk-new>Make New board</button>
 		</div>
 		<script src=core.js></script>
@@ -16,15 +17,18 @@
 			document.getElementById("mk-new").onclick=()=>{
 				let width=Number(document.getElementById("width").value),
 					height=Number(document.getElementById("height").value),
-					length=Number(document.getElementById("length").value)
+					length=Number(document.getElementById("length").value),
+					players=document.getElementById("players").value
 				if(width<1) width=undefined
 				if(height<1) height=undefined
 				if(length<1) length=undefined
+				if(players.length<1) players=undefined
 				makeTicTacToeBoard({
 					container:document.getElementById("gameboard"),
 					width,
 					height,
-					length
+					length,
+					players
 				})
 			}
 		</script>
