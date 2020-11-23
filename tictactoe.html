@@ -2,6 +2,14 @@
 <html>
 	<head>
 		<title>Tic-Tac-Toe</title>
+		<style>
+			.ultimate tr:not(:last-child) td{
+				border-bottom:solid black 1px;
+			}
+			.ultimate td:not(:last-child){
+				border-right:solid black 1px;
+			}
+		</style>
 	</head>
 	<body>
 		<div id=gameboard></div>
@@ -23,13 +31,13 @@
 				if(height<1) height=undefined
 				if(length<1) length=undefined
 				if(players.length<1) players=undefined
-				makeTicTacToeBoard({
-					container:document.getElementById("gameboard"),
-					width,
-					height,
-					length,
-					players
-				})
+				document.getElementById("gameboard")
+					.appendChild(makeTicTacToeBoard({
+						width,
+						height,
+						length,
+						players
+					}))
 			}
 		</script>
 	</body>

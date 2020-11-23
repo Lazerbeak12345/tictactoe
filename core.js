@@ -118,41 +118,78 @@ let makeButton=({label="",callback=null})=>{
 		}
 		return {who:null,boxes:[]};
 	},
+	makeGenericBoard=({
+		width=3,
+		height=3,
+		length=Math.min(width,height),
+		players="XO",
+		table,
+		getMovesLeft
+	})=>{
+		let gameOver=false,
+			playerIndex=0,
+			realBox=document.createElement("div"),
+			_table=realBox.appendChild(table({
+				getPlayer:()=>players[playerIndex],
+				getPlayerId:()=>playerIndex,
+				nextPlayer:()=>{
+					playerIndex++
+					if(playerIndex>=players.length)
+						playerIndex=0
+				},
+				setHud:str=>hud.innerText=str,
+				getChildNodes:()=>_table.childNodes,
+				getGameOver:()=>gameOver,
+				setGameOver:({player})=>{
+					gameOver=true
+				}
+			})),
+			hud=realBox.appendChild(makeSpan({
+				text:`${players[playerIndex]} goes first.`
+			}))
+		return realBox
+	},
 	makeTicTacToeBoard=({
-		container,
 		width=3,
 		height=3,
 		length=Math.min(width,height),
 		players="XO"
 	})=>{
-		let gameOver=false,
-			player=players[0],
-			playerIndex=0,
-			boardData=makeIterable(height).map(()=>
+		let boardData=makeIterable(height).map(()=>
 				makeIterable(width).map(()=>null)),
-			movesLeft=height*width,
-			realBox=container.appendChild(document.createElement("div")),
-			table=realBox.appendChild(makeButtonTable({
+			movesLeft=height*width
+		return makeGenericBoard({
+			width,
+			height,
+			length,
+			players,
+			getMovesLeft:()=>movesLeft,
+			table:({
+				getPlayer,
+				getPlayerId,
+				nextPlayer,
+				setHud,
+				getChildNodes,
+				getGameOver,
+				setGameOver
+			})=>makeButtonTable({
 				labels:boardData.map(v=>v.map(()=>"?")),
 				callback:({x,y,e})=>{
-					if(gameOver)return
-					boardData[y][x]=player
-					e.target.innerText=player
+					if(getGameOver())return
+					boardData[y][x]=getPlayerId()
+					e.target.innerText=getPlayer()
 					e.target.disabled=true
 					movesLeft--
 					if(movesLeft===0){
-						gameOver=true
-						playerIndicator.innerText=`Draw! (no moves left)`
-						//Update for recursive games
-						player=null
+						setGameOver({player:null})
+						setHud(`Draw! (no moves left)`)
 						return
 					}
 					let win=checkForWin({board:boardData,maxDepth:length})
 					if(win.who!==null){
-						gameOver=true
-						player=win.who
-						playerIndicator.innerText=`${player} won!`
-						table.childNodes.forEach((tr,ny)=>
+						setGameOver({player:win.who})
+						setHud(`${getPlayer()} won!`)
+						getChildNodes().forEach((tr,ny)=>
 							tr.childNodes.forEach((td,nx)=>{
 								td.children[0].disabled=true
 								win.boxes.forEach(({x,y})=>{
@@ -161,15 +198,21 @@ let makeButton=({label="",callback=null})=>{
 								})
 							}))
 					}else{
-						playerIndex++
-						if(playerIndex>=players.length)
-							playerIndex=0
-						player=players[playerIndex]
-						playerIndicator.innerText=`${player} (moves left: ${movesLeft})`
+						nextPlayer()
+						setHud(`${getPlayer()} (moves left: ${movesLeft})`)
 					}
 				}
-			})),
-			playerIndicator=realBox.appendChild(makeSpan({
-				text:`${player} goes first.`
-			}))
-	}
+			})
+		})
+	},
+	makeUltimateBoard=({
+		width=3,
+		height=3,
+		length=Math.min(width,height),
+		players="XO"
+	})=>makeGenericBoard({
+		width,
+		height,
+		length,
+		players
+	})
