@@ -12,8 +12,9 @@ let makeButton=({label="",callback=null})=>{
 	/** Make an array of a given amount of empty strings so we can quickly map
 	 * it*/
 	makeIterable=amount=>new Array(amount).join(" ").split(" "),
-	makeTableFromGrid=({grid,converter})=>{
+	makeTableFromGrid=({grid,converter,classList})=>{
 		let table=document.createElement("table")
+		table.classList=classList
 		grid.map((row,y)=>{
 			let tr=document.createElement("tr")
 			row.map((val,x)=>{
@@ -124,9 +125,12 @@ let makeButton=({label="",callback=null})=>{
 		length=Math.min(width,height),
 		players="XO",
 		table,
-		getMovesLeft
+		_ultimate
 	})=>{
-		let gameOver=false,
+		let grid=makeIterable(height).map(()=>
+				makeIterable(width).map(()=>null)),
+			gameOver=false,
+			movesLeft=height*width,
 			playerIndex=0,
 			realBox=document.createElement("div"),
 			_table=realBox.appendChild(table({
@@ -142,77 +146,183 @@ let makeButton=({label="",callback=null})=>{
 				getGameOver:()=>gameOver,
 				setGameOver:({player})=>{
 					gameOver=true
-				}
+					if(_ultimate)
+						_ultimate.setWinner({
+							playerIndex:player,
+							movesLeft
+						})
+				},
+				getGrid:()=>grid,
+				setSpotInGrid:({x,y,value})=>
+					grid[y][x]=value,
+				buttonClicked:({x,y})=>{
+					movesLeft--
+					if(_ultimate)_ultimate.buttonClicked({
+						x,
+						y
+					})
+				},
+				getMovesLeft:()=>movesLeft
 			})),
 			hud=realBox.appendChild(makeSpan({
-				text:`${players[playerIndex]} goes first.`
+				text:_ultimate?"":`${players[playerIndex]} goes first.`
 			}))
+		if(_ultimate)_ultimate.addMovesLeft(movesLeft)
 		return realBox
 	},
 	makeTicTacToeBoard=({
 		width=3,
 		height=3,
 		length=Math.min(width,height),
-		players="XO"
-	})=>{
-		let boardData=makeIterable(height).map(()=>
-				makeIterable(width).map(()=>null)),
-			movesLeft=height*width
-		return makeGenericBoard({
-			width,
-			height,
-			length,
-			players,
-			getMovesLeft:()=>movesLeft,
-			table:({
-				getPlayer,
-				getPlayerId,
-				nextPlayer,
-				setHud,
-				getChildNodes,
-				getGameOver,
-				setGameOver
-			})=>makeButtonTable({
-				labels:boardData.map(v=>v.map(()=>"?")),
-				callback:({x,y,e})=>{
-					if(getGameOver())return
-					boardData[y][x]=getPlayerId()
-					e.target.innerText=getPlayer()
-					e.target.disabled=true
-					movesLeft--
-					if(movesLeft===0){
-						setGameOver({player:null})
-						setHud(`Draw! (no moves left)`)
-						return
-					}
-					let win=checkForWin({board:boardData,maxDepth:length})
-					if(win.who!==null){
-						setGameOver({player:win.who})
-						setHud(`${getPlayer()} won!`)
-						getChildNodes().forEach((tr,ny)=>
-							tr.childNodes.forEach((td,nx)=>{
-								td.children[0].disabled=true
-								win.boxes.forEach(({x,y})=>{
-									if(y===ny&&x===nx)
-										td.children[0].disabled=false
-								})
-							}))
-					}else{
-						nextPlayer()
-						setHud(`${getPlayer()} (moves left: ${movesLeft})`)
-					}
+		players="XO",
+		_ultimate
+	})=>makeGenericBoard({
+		_ultimate,
+		width,
+		height,
+		length,
+		players,
+		table:({
+			getGrid,
+			setSpotInGrid,
+			getPlayer,
+			getPlayerId,
+			nextPlayer,
+			setHud,
+			getChildNodes,
+			getGameOver,
+			setGameOver,
+			buttonClicked,
+			getMovesLeft
+		})=>makeButtonTable({
+			labels:getGrid().map(v=>v.map(()=>"?")),
+			callback:({x,y,e})=>{
+				if(getGameOver())return
+				setSpotInGrid({
+					x,
+					y,
+					value:getPlayerId()
+				})
+				e.target.innerText=getPlayer()
+				e.target.disabled=true
+				buttonClicked({x,y})
+				if(getMovesLeft()===0){
+					setGameOver({player:null})
+					setHud(`Draw! (no moves left)`)
+					return
 				}
-			})
+				let win=checkForWin({board:getGrid(),maxDepth:length})
+				if(win.who!==null){
+					setGameOver({player:win.who})
+					setHud(`${players[win.who]} won!`)
+					getChildNodes().forEach((tr,ny)=>
+						tr.childNodes.forEach((td,nx)=>{
+							td.children[0].disabled=true
+							win.boxes.forEach(({x,y})=>{
+								if(y===ny&&x===nx)
+									td.children[0].disabled=false
+							})
+						}))
+				}else{
+					nextPlayer()
+					if(!_ultimate)
+						setHud(`${getPlayer()} (moves left: ${getMovesLeft()})`)
+				}
+			}
 		})
-	},
+	}),
 	makeUltimateBoard=({
 		width=3,
 		height=3,
 		length=Math.min(width,height),
-		players="XO"
-	})=>makeGenericBoard({
-		width,
-		height,
-		length,
-		players
-	})
+		players="XO",
+		innerTTT=true,
+		innerData={
+			width,
+			height,
+			length,
+			players
+		},
+		_ultimate
+	})=>{
+		let actualMovesLeft=0
+		return makeGenericBoard({
+			_ultimate,
+			width,
+			height,
+			length,
+			players,
+			table:({
+				getGrid,
+				setSpotInGrid,
+				setHud,
+				getPlayer,
+				setGameOver,
+				getMovesLeft
+			})=>makeTableFromGrid({
+				grid:getGrid(),
+				classList:"ultimate",
+				converter:({val,x,y})=>{
+					let updateHudCount=()=>{
+						if(actualMovesLeft>0)
+							setHud(`${getPlayer()} (moves left: ${actualMovesLeft})`)
+						else{
+							console.log("new?")
+							setHud(`Draw! (no moves left)`)
+						}
+					},
+						subCallbacks={
+							x,
+							y,
+							setWinner:({playerIndex,movesLeft})=>{
+								if(innerTTT){
+									actualMovesLeft-=movesLeft
+									if(_ultimate)_ultimate.addMovesLeft(-1*movesLeft)
+									updateHudCount()
+								}else
+									console.log("TODO")
+								setSpotInGrid({
+									x,
+									y,
+									value:playerIndex
+								})
+								if(getMovesLeft()===0){
+									console.log("old?")
+									setGameOver({player:null})
+									setHud(`Draw! (no moves left)`)
+									return
+								}
+								let win=checkForWin({board:getGrid(),maxDepth:length})
+								if(win.who!==null){
+									setGameOver({player:win.who})
+									setHud(`${players[win.who]} won!`)
+									/*getChildNodes().forEach((tr,ny)=>
+										tr.childNodes.forEach((td,nx)=>{
+											td.children[0].disabled=true
+											win.boxes.forEach(({x,y})=>{
+												if(y===ny&&x===nx)
+													td.children[0].disabled=false
+											})
+										}))*/
+								}
+							},
+							buttonClicked:({x,y})=>{
+								console.log(`clicked ${x},${y}`)
+								actualMovesLeft--
+								if(_ultimate)_ultimate.addMovesLeft(-1)
+								updateHudCount()
+							},
+							addMovesLeft:amount=>{
+								actualMovesLeft+=amount
+								if(_ultimate)_ultimate.addMovesLeft(amount)
+							}
+						}
+					innerData._ultimate=subCallbacks
+					if (innerTTT)
+						return makeTicTacToeBoard(innerData)
+					else
+						return makeUltimateBoard(innerData)
+				}
+			})
+		})
+	}
