@@ -170,7 +170,27 @@ let makeButton=({label="",callback=null})=>{
 			hud=realBox.appendChild(makeSpan({
 				text:_ultimate?"":`${players[playerIndex]} goes first.`
 			}))
-		if(_ultimate)_ultimate.addMovesLeft(movesLeft)
+		if(_ultimate){
+			_ultimate.addMovesLeft(movesLeft)
+			_ultimate.init({
+				lock:()=>{
+					if(gameOver) return
+					_table.childNodes.forEach((tr,ny)=>
+						tr.childNodes.forEach((td,nx)=>{
+								td.children[0].disabled=true
+							}))
+				},
+				unlock:()=>{
+					if(gameOver) return false
+					_table.childNodes.forEach((tr,y)=>
+						tr.childNodes.forEach((td,x)=>{
+								console.log({x,y},grid[y][x])
+								td.children[0].disabled=grid[y][x]!==null
+							}))
+					return true
+				},
+			})
+		}
 		return realBox
 	},
 	makeTicTacToeBoard=({
@@ -246,7 +266,16 @@ let makeButton=({label="",callback=null})=>{
 		},
 		_ultimate
 	})=>{
-		let actualMovesLeft=0
+		let actualMovesLeft=0,
+			initGrid=makeIterable(height).map(()=>
+				makeIterable(width).map(()=>null)),
+			lockChildren=()=>
+				initGrid.map((row,y)=>
+					row.map(({lock},x)=>lock())),
+			unlockChild=({x,y})=>initGrid[y][x].unlock(),
+			unlockChildren=()=>
+				initGrid.map((row,y)=>
+					row.map(({unlock},x)=>unlock()))
 		return makeGenericBoard({
 			_ultimate,
 			width,
@@ -289,24 +318,22 @@ let makeButton=({label="",callback=null})=>{
 								if(win.who!==null){
 									setGameOver({player:win.who})
 									setHud(`${players[win.who]} won!`)
-									/*getChildNodes().forEach((tr,ny)=>
-										tr.childNodes.forEach((td,nx)=>{
-											td.children[0].disabled=true
-											win.boxes.forEach(({x,y})=>{
-												if(y===ny&&x===nx)
-													td.children[0].disabled=false
-											})
-										}))*/
+									lockChildren()
 								}
 							},
 							buttonClicked:({x,y})=>{
 								actualMovesLeft--
 								if(_ultimate)_ultimate.addMovesLeft(-1)
 								updateHudCount()
+								lockChildren()
+								unlockChild({x,y})||unlockChildren()
 							},
 							addMovesLeft:amount=>{
 								actualMovesLeft+=amount
 								if(_ultimate)_ultimate.addMovesLeft(amount)
+							},
+							init:a=>{
+								initGrid[y][x]=a
 							}
 						}
 					innerData._ultimate=subCallbacks
