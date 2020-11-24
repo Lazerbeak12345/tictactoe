@@ -1,6 +1,9 @@
 let makeButton=({label="",callback=null})=>{
 	let btn=document.createElement("button")
-	btn.innerText=label
+	if(label===null)
+		btn.innerHTML="&nbsp;"
+	else
+		btn.innerText=label
 	btn.onclick=callback
 	return btn
 },
@@ -195,7 +198,7 @@ let makeButton=({label="",callback=null})=>{
 			buttonClicked,
 			getMovesLeft
 		})=>makeButtonTable({
-			labels:getGrid().map(v=>v.map(()=>"?")),
+			labels:getGrid(),
 			callback:({x,y,e})=>{
 				if(getGameOver())return
 				setSpotInGrid({
@@ -206,11 +209,6 @@ let makeButton=({label="",callback=null})=>{
 				e.target.innerText=getPlayer()
 				e.target.disabled=true
 				buttonClicked({x,y})
-				if(getMovesLeft()===0){
-					setGameOver({player:null})
-					setHud(`Draw! (no moves left)`)
-					return
-				}
 				let win=checkForWin({board:getGrid(),maxDepth:length})
 				if(win.who!==null){
 					setGameOver({player:win.who})
@@ -223,6 +221,9 @@ let makeButton=({label="",callback=null})=>{
 									td.children[0].disabled=false
 							})
 						}))
+				}else if(getMovesLeft()===0){
+					setGameOver({player:null})
+					setHud("Draw!"+_ultimate?"":" (no moves left)")
 				}else{
 					nextPlayer()
 					if(!_ultimate)
@@ -266,10 +267,8 @@ let makeButton=({label="",callback=null})=>{
 					let updateHudCount=()=>{
 						if(actualMovesLeft>0)
 							setHud(`${getPlayer()} (moves left: ${actualMovesLeft})`)
-						else{
-							console.log("new?")
-							setHud(`Draw! (no moves left)`)
-						}
+						else
+							setHud("Draw!"+_ultimate?"":" (no moves left)")
 					},
 						subCallbacks={
 							x,
@@ -286,12 +285,6 @@ let makeButton=({label="",callback=null})=>{
 									y,
 									value:playerIndex
 								})
-								if(getMovesLeft()===0){
-									console.log("old?")
-									setGameOver({player:null})
-									setHud(`Draw! (no moves left)`)
-									return
-								}
 								let win=checkForWin({board:getGrid(),maxDepth:length})
 								if(win.who!==null){
 									setGameOver({player:win.who})
@@ -307,7 +300,6 @@ let makeButton=({label="",callback=null})=>{
 								}
 							},
 							buttonClicked:({x,y})=>{
-								console.log(`clicked ${x},${y}`)
 								actualMovesLeft--
 								if(_ultimate)_ultimate.addMovesLeft(-1)
 								updateHudCount()
