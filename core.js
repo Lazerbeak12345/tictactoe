@@ -17,7 +17,7 @@ let makeButton=({label="",callback=null})=>{
 	makeIterable=amount=>new Array(amount).join(" ").split(" "),
 	makeTableFromGrid=({grid,converter,classList})=>{
 		let table=document.createElement("table")
-		table.classList=classList
+		if(classList)table.classList.add(...classList)
 		grid.map((row,y)=>{
 			let tr=document.createElement("tr")
 			row.map((val,x)=>{
@@ -144,11 +144,13 @@ let makeButton=({label="",callback=null})=>{
 					if(playerIndex>=players.length)
 						playerIndex=0
 				},
-				setHud:str=>hud.innerText=str,
-				getChildNodes:()=>_table.childNodes,
+				setHud:str=>{
+					if(!_ultimate) hud.innerText=str
+				},
 				getGameOver:()=>gameOver,
 				setGameOver:({player})=>{
 					gameOver=true
+					_table.classList.add("disabled")//for css reasons
 					if(_ultimate)
 						_ultimate.setWinner({
 							playerIndex:player,
@@ -165,7 +167,20 @@ let makeButton=({label="",callback=null})=>{
 						y
 					})
 				},
-				getMovesLeft:()=>movesLeft
+				getMovesLeft:()=>movesLeft,
+				updateGui:({win,x,y})=>{
+					if(gameOver)
+						_table.childNodes.forEach((tr,ny)=>
+							tr.childNodes.forEach((td,nx)=>{
+								td.children[0].disabled=true
+								win.boxes.forEach(({x,y})=>{
+									if(y===ny&&x===nx)
+										td.children[0].disabled=false
+								})
+							}))
+					if(_ultimate)_ultimate.updateGui({x,y})
+				},
+				getWin:()=>checkForWin({board:grid,maxDepth:length})
 			})),
 			hud=realBox.appendChild(makeSpan({
 				text:_ultimate?"":`${players[playerIndex]} goes first.`
@@ -173,22 +188,26 @@ let makeButton=({label="",callback=null})=>{
 		if(_ultimate){
 			_ultimate.addMovesLeft(movesLeft)
 			_ultimate.init({
-				lock:()=>{
+				lock:({disable})=>{
 					if(gameOver) return
+					if(disable)_table.classList.add("disabled")//for css reasons
 					_table.childNodes.forEach((tr,ny)=>
 						tr.childNodes.forEach((td,nx)=>{
 								td.children[0].disabled=true
 							}))
 				},
-				unlock:()=>{
-					if(gameOver) return false
+				unlock:({disable})=>{
+					if(gameOver){
+						if(disable)_table.classList.remove("disabled")//for css reasons
+						return false
+					}
 					_table.childNodes.forEach((tr,y)=>
 						tr.childNodes.forEach((td,x)=>{
-								console.log({x,y},grid[y][x])
 								td.children[0].disabled=grid[y][x]!==null
 							}))
 					return true
 				},
+				setPlayer:playerId=>playerIndex=playerId
 			})
 		}
 		return realBox
@@ -212,11 +231,12 @@ let makeButton=({label="",callback=null})=>{
 			getPlayerId,
 			nextPlayer,
 			setHud,
-			getChildNodes,
 			getGameOver,
 			setGameOver,
 			buttonClicked,
-			getMovesLeft
+			getMovesLeft,
+			updateGui,
+			getWin
 		})=>makeButtonTable({
 			labels:getGrid(),
 			callback:({x,y,e})=>{
@@ -229,26 +249,18 @@ let makeButton=({label="",callback=null})=>{
 				e.target.innerText=getPlayer()
 				e.target.disabled=true
 				buttonClicked({x,y})
-				let win=checkForWin({board:getGrid(),maxDepth:length})
+				let win=getWin()
 				if(win.who!==null){
 					setGameOver({player:win.who})
 					setHud(`${players[win.who]} won!`)
-					getChildNodes().forEach((tr,ny)=>
-						tr.childNodes.forEach((td,nx)=>{
-							td.children[0].disabled=true
-							win.boxes.forEach(({x,y})=>{
-								if(y===ny&&x===nx)
-									td.children[0].disabled=false
-							})
-						}))
 				}else if(getMovesLeft()===0){
 					setGameOver({player:null})
-					setHud("Draw!"+_ultimate?"":" (no moves left)")
+					setHud("Draw! (no moves left)")
 				}else{
 					nextPlayer()
-					if(!_ultimate)
-						setHud(`${getPlayer()} (moves left: ${getMovesLeft()})`)
+					setHud(`${getPlayer()} (moves left: ${getMovesLeft()})`)
 				}
+				updateGui({win,x,y})
 			}
 		})
 	}),
@@ -269,13 +281,16 @@ let makeButton=({label="",callback=null})=>{
 		let actualMovesLeft=0,
 			initGrid=makeIterable(height).map(()=>
 				makeIterable(width).map(()=>null)),
-			lockChildren=()=>
+			lockChildren=args=>
 				initGrid.map((row,y)=>
-					row.map(({lock},x)=>lock())),
-			unlockChild=({x,y})=>initGrid[y][x].unlock(),
+					row.map(({lock},x)=>lock(args))),
+			unlockChild=({x,y,disable})=>initGrid[y][x].unlock({disable}),
 			unlockChildren=()=>
 				initGrid.map((row,y)=>
-					row.map(({unlock},x)=>unlock()))
+					row.map(({unlock},x)=>unlock({}))),
+			setChildrenPlayers=playerId=>
+				initGrid.map((row,y)=>
+					row.map(({setPlayer},x)=>setPlayer(playerId)))
 		return makeGenericBoard({
 			_ultimate,
 			width,
@@ -287,17 +302,19 @@ let makeButton=({label="",callback=null})=>{
 				setSpotInGrid,
 				setHud,
 				getPlayer,
+				getPlayerId,
+				nextPlayer,
 				setGameOver,
-				getMovesLeft
+				getGameOver,
+				getMovesLeft,
+				getWin
 			})=>makeTableFromGrid({
 				grid:getGrid(),
-				classList:"ultimate",
 				converter:({val,x,y})=>{
 					let updateHudCount=()=>{
 						if(actualMovesLeft>0)
 							setHud(`${getPlayer()} (moves left: ${actualMovesLeft})`)
-						else
-							setHud("Draw!"+_ultimate?"":" (no moves left)")
+						else setHud("Draw! (no moves left)")
 					},
 						subCallbacks={
 							x,
@@ -314,18 +331,26 @@ let makeButton=({label="",callback=null})=>{
 									y,
 									value:playerIndex
 								})
-								let win=checkForWin({board:getGrid(),maxDepth:length})
+								let win=getWin()
 								if(win.who!==null){
 									setGameOver({player:win.who})
 									setHud(`${players[win.who]} won!`)
-									lockChildren()
+									lockChildren({disable:true})
+									win.boxes.forEach(({x,y})=>
+										unlockChild({x,y,disable:true}))
 								}
 							},
 							buttonClicked:({x,y})=>{
 								actualMovesLeft--
 								if(_ultimate)_ultimate.addMovesLeft(-1)
+								nextPlayer()
+							},
+							updateGui:({x,y})=>{
+								if(getGameOver())return
 								updateHudCount()
-								lockChildren()
+								//Has to be after the win check
+								setChildrenPlayers(getPlayerId())
+								lockChildren({})
 								unlockChild({x,y})||unlockChildren()
 							},
 							addMovesLeft:amount=>{
