@@ -3,43 +3,53 @@
 	<head>
 		<title>Tic-Tac-Toe</title>
 		<style>
+			/*TODO:figure this out*/
+			@media(@prefers-dark-theme){
+				body{
+					background:black;
+				}
+			}
+			body{
+				background:white;
+			}
 			table{
 				border-spacing:0;
 				font-size:1vh;
 			}
-			table button,
-			table{
-				padding:.5em 1ex;
+			button, table{
 				border-radius:1vh;
 				border:none;
-				box-shadow: .15vh .4vh hsl(0 0% 50% / 0.5);
-				transform:translateY(calc(-1*var(--shadowChange)));
+				box-shadow:0 .3em .3em 0 hsl(0 0% 0% / .5);
 				margin:.4vh;
 				font-weight:bold;
-				background:hsl(0 0% 50% / 0.125);
-				outline:none;
+				--highlight:hsl(0 0% 50% / 0.125);
+				background:var(--highlight);
 			}
-			table button{
+			input[type=text]{
+				background:hsl(0 0% 50% / 0.125);
+				border:none;
+				--highlight:hsl(0 0% 50% / 0.125);
+				border-bottom:solid var(--highlight) .5vh;
+				padding:.1em;
+			}
+			table.won,button.won,input:focus{
+				--highlight:hsl(228 100% 50% / 0.35);
+			}
+			button,input,table{
+				padding:.5em 1ex;
 				min-height:2em;
 				min-width:4ex;
+				outline:none;
 			}
-			table button:hover:not([disabled]):not(:active),
-			table button:focus:not([disabled]):not(:active),
-			table:hover:not(.disabled):not(:active),
-			table:focus:not(.disabled):not(:active){
-				box-shadow:
-					calc(.15vh + 0.1vh)
-					calc(.4vh + 0.1vh)
-					hsl(0 0% 50% / 0.5);
+			button:hover:not([disabled]):not(:active){
+				box-shadow:0 .4em .4em 0 hsl(0 0% 0% / .5);
+				transform:translateY(-0.1em);
 			}
-			table button:active{
-				box-shadow:
-					calc(.15vh - 0.1vh)
-					calc(.4vh - 0.1vh)
-					hsl(0 0% 50% / 0.5);
+			button:active:not([disabled]){
+				box-shadow:0 .2em .2em 0 hsl(0 0% 0% / .5);
+				transform:translateY(0.1em);
 			}
-			table button[disabled],
-			table.disabled{
+			button[disabled],table.disabled{
 				box-shadow:none;
 			}
 		</style>
@@ -73,7 +83,9 @@
 					}))
 			};
 			document.getElementById("gameboard")
-				.appendChild(makeUltimateBoard({}))
+				.appendChild(makeUltimateBoard({innerTTT:false}))
+			/*document.getElementById("gameboard")
+				.appendChild(makeUltimateBoard({}))*/
 		</script>
 	</body>
 </html>

@@ -128,6 +128,10 @@ let makeButton=({label="",callback=null})=>{
 		length=Math.min(width,height),
 		players="XO",
 		table,
+		setChildrenPlayers,
+		lockChildren,
+		unlockChildren,
+		isUltimate,
 		_ultimate
 	})=>{
 		let grid=makeIterable(height).map(()=>
@@ -169,15 +173,18 @@ let makeButton=({label="",callback=null})=>{
 				},
 				getMovesLeft:()=>movesLeft,
 				updateGui:({win,x,y})=>{
-					if(gameOver)
+					if(gameOver){
+						if(isUltimate&&!_ultimate)console.log("updateGui todo")
 						_table.childNodes.forEach((tr,ny)=>
 							tr.childNodes.forEach((td,nx)=>{
-								td.children[0].disabled=true
+								let btn=td.children[0]
+								btn.disabled=true
 								win.boxes.forEach(({x,y})=>{
 									if(y===ny&&x===nx)
-										td.children[0].disabled=false
+										btn.classList.add("won")
 								})
 							}))
+					}
 					if(_ultimate)_ultimate.updateGui({x,y})
 				},
 				getWin:()=>checkForWin({board:grid,maxDepth:length})
@@ -191,23 +198,34 @@ let makeButton=({label="",callback=null})=>{
 				lock:({disable})=>{
 					if(gameOver) return
 					if(disable)_table.classList.add("disabled")//for css reasons
+					if(isUltimate)lockChildren({disable:true})
 					_table.childNodes.forEach((tr,ny)=>
 						tr.childNodes.forEach((td,nx)=>{
-								td.children[0].disabled=true
-							}))
+							let btn=td.children[0]
+							btn.disabled=true
+							btn.classList.add("disabled")
+						}))
 				},
 				unlock:({disable})=>{
 					if(gameOver){
-						if(disable)_table.classList.remove("disabled")//for css reasons
+						if(disable) _table.classList.add("won")
 						return false
 					}
-					_table.childNodes.forEach((tr,y)=>
-						tr.childNodes.forEach((td,x)=>{
-								td.children[0].disabled=grid[y][x]!==null
-							}))
+					if(isUltimate){
+						unlockChildren()
+					}else
+						_table.childNodes.forEach((tr,y)=>
+							tr.childNodes.forEach((td,x)=>{
+								let isNull=grid[y][x]!==null,
+									btn=td.children[0]
+								btn.disabled=isNull
+						}))
 					return true
 				},
-				setPlayer:playerId=>playerIndex=playerId
+				setPlayer:playerId=>{
+					playerIndex=playerId
+					if(isUltimate)setChildrenPlayers(playerId)
+				}
 			})
 		}
 		return realBox
@@ -297,6 +315,10 @@ let makeButton=({label="",callback=null})=>{
 			height,
 			length,
 			players,
+			setChildrenPlayers,
+			lockChildren,
+			unlockChildren,
+			isUltimate:true,
 			table:({
 				getGrid,
 				setSpotInGrid,
@@ -307,7 +329,9 @@ let makeButton=({label="",callback=null})=>{
 				setGameOver,
 				getGameOver,
 				getMovesLeft,
-				getWin
+				getWin,
+				buttonClicked,
+				updateGui
 			})=>makeTableFromGrid({
 				grid:getGrid(),
 				converter:({val,x,y})=>{
@@ -316,22 +340,25 @@ let makeButton=({label="",callback=null})=>{
 							setHud(`${getPlayer()} (moves left: ${actualMovesLeft})`)
 						else setHud("Draw! (no moves left)")
 					},
+						//These two are so we can access them in weird spots
+						outerX=x,
+						outerY=y,
+						//This is so the win value can be accessed in updateGui
+						win={},
 						subCallbacks={
 							x,
 							y,
 							setWinner:({playerIndex,movesLeft})=>{
-								if(innerTTT){
-									actualMovesLeft-=movesLeft
-									if(_ultimate)_ultimate.addMovesLeft(-1*movesLeft)
-									updateHudCount()
-								}else
-									console.log("TODO")
+								actualMovesLeft-=movesLeft
+								if(_ultimate)_ultimate.addMovesLeft(-1*movesLeft)
+								updateHudCount()
 								setSpotInGrid({
 									x,
 									y,
 									value:playerIndex
 								})
-								let win=getWin()
+								//Update the win var
+								win=getWin()
 								if(win.who!==null){
 									setGameOver({player:win.who})
 									setHud(`${players[win.who]} won!`)
@@ -342,14 +369,22 @@ let makeButton=({label="",callback=null})=>{
 							},
 							buttonClicked:({x,y})=>{
 								actualMovesLeft--
-								if(_ultimate)_ultimate.addMovesLeft(-1)
 								nextPlayer()
+								if(_ultimate)_ultimate.addMovesLeft(-1)
+								buttonClicked({x,y})
 							},
 							updateGui:({x,y})=>{
 								if(getGameOver())return
 								updateHudCount()
 								//Has to be after the win check
 								setChildrenPlayers(getPlayerId())
+								updateGui({
+									win,
+									x:outerX,
+									y:outerY,
+									//x,
+									//y
+								})
 								lockChildren({})
 								unlockChild({x,y})||unlockChildren()
 							},
@@ -359,6 +394,7 @@ let makeButton=({label="",callback=null})=>{
 							},
 							init:a=>{
 								initGrid[y][x]=a
+								a.unlock({})
 							}
 						}
 					innerData._ultimate=subCallbacks
