@@ -1,3 +1,8 @@
+/** Core components of this library */
+/** makeButton
+ * @label the text inside the button
+ * @callback the function called when the button is clicked
+ */
 let makeButton=({label="",callback=null})=>{
 	let btn=document.createElement("button")
 	if(label===null)
@@ -7,6 +12,9 @@ let makeButton=({label="",callback=null})=>{
 	btn.onclick=callback
 	return btn
 },
+	/* makeSpan
+	 * @text the text inside the span
+	 */
 	makeSpan=({text})=>{
 		let span=document.createElement("span")
 		span.innerText=text
@@ -15,6 +23,14 @@ let makeButton=({label="",callback=null})=>{
 	/** Make an array of a given amount of empty strings so we can quickly map
 	 * it*/
 	makeIterable=amount=>new Array(amount).join(" ").split(" "),
+	/* makeTableFromGrid
+	 * @grid a 2d array of anything
+	 * @converter a function called with 3 args on every element in @grid: {
+	 * 		@x and @y the x,y position in the grid (`grid[1][2]` is y=1 x=2)
+	 * 		@val the value in that position of @grid
+	 * }
+	 * @classList an array of classes to give the table element
+	 */
 	makeTableFromGrid=({grid,converter,classList})=>{
 		let table=document.createElement("table")
 		if(classList)table.classList.add(...classList)
@@ -29,6 +45,14 @@ let makeButton=({label="",callback=null})=>{
 		})
 		return table
 	},
+	/* makeButtonTable
+	 * @labels a 2d array of strings
+	 * @callback a function called with 3 args when an element on thr grid is
+	 * 	clicked:{
+	 * 		@x and @y the x,y position (same idea as on [[makeTableFromGrid]])
+	 * 		@e the html5 click event
+	 * 	}
+	 */
 	makeButtonTable=({labels,callback})=>
 		makeTableFromGrid({
 			//Perfect use-case for a monad right here
@@ -39,11 +63,34 @@ let makeButton=({label="",callback=null})=>{
 					callback:e=>callback({x,y,e})
 				})
 		}),
+	/* checkForWin
+	 * Check for a win on a given @board with @maxDepth in a row to win.
+	 *
+	 * Returns an object where: {
+	 * 		@boxes an array where it's empty if there's nothing, or full of the
+	 *	 		following object:
+	 *	 	{
+	 * 			@x the x position
+	 * 			@y the y position
+	 * 		}
+	 * 		@who `null` if no winner or else the value (in the same encoding used in
+	 * 			the array) that was detected to have @maxDepth in a row.
+	 * }
+	 */
 	checkForWin=({board,maxDepth=3})=>{
 		let result={
 			boxes:[],
 			who:null
 		},
+			/* checkDirection
+			 * Check for a win in a certian direction
+			 *
+			 * @changeX the change in X
+			 * @changeY the change in Y
+			 * @remainingW @remainingH how much space till the edge of the board
+			 * @x starting X position
+			 * @y ending X position.
+			 */
 			checkDirection=({
 				changeX=0,
 				changeY=0,
@@ -80,7 +127,7 @@ let makeButton=({label="",callback=null})=>{
 			for(let x=0; x<board[y].length; x++){
 				let remainingW=board[y].length-x
 				if(board[y][x]===null)continue
-				//down
+				//down TODO: this is a bit ugly. Perhaps return a bool from `checkDirection`?
 				checkDirection({
 					changeY:1,
 					remainingW:Infinity,
@@ -122,6 +169,31 @@ let makeButton=({label="",callback=null})=>{
 		}
 		return {who:null,boxes:[]};
 	},
+	// TODO: everything below this line is ugly, and needs reformatted.
+	/* makeGenericBoard
+	 * A class I now see as ugly that holds all of the important parts of state of
+	 *	 a single tic tac toe game.
+	 * 
+	 * @width the width of the board
+	 * @height the height of the board
+	 * @length the number in a row to win
+	 * @players a string of single characters that serves as the player names, with
+	 * 	the index as player ID
+	 * @table A function that TODO expound here
+	 * @setChildrenPlayers a funciton only required if this board is an ultimate
+	 * 	board. Sets the player ID of the children boards of this board. Expects
+	 * 	the playerID as it's only argument.
+	 * @lockChildren a function only required if this board is an ultimate board.
+	 * 	Locks the children boards of this board so now a player can't click buttons
+	 * 	within them. Takes a single argument, an object:{
+	 * 		@disable an optional boolean where if true, will also disable the board,
+	 * 			instead of just it's contents.
+	 * 	}
+	 * @unlockChildren a function only required if this board is an ultimate board.
+	 * 	Unlocks the children boards of this board so now a player can click buttons.
+	 * 	Doesn't unlock the board itself, it seems. Just the buttons?
+	 * TODO this is where I left off on commenting
+	 */
 	makeGenericBoard=({
 		width=3,
 		height=3,
