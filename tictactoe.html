@@ -3,12 +3,6 @@
 	<head>
 		<title>Tic-Tac-Toe</title>
 		<style>
-			/*TODO:figure this out*/
-			@media(@prefers-dark-theme){
-				body{
-					background:black;
-				}
-			}
 			body{
 				background:white;
 			}
@@ -51,6 +45,14 @@
 			}
 			button[disabled],table.disabled{
 				box-shadow:none;
+			}
+			@media (prefers-color-scheme: dark) {
+				body{
+					background:black;
+				}
+				button{
+					color:lightgrey
+				}
 			}
 		</style>
 	</head>
